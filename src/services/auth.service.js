@@ -4,6 +4,7 @@ const userService = require('./user.service');
 const Token = require('../models/token.model');
 const ApiError = require('../utils/ApiError');
 const { tokenTypes } = require('../config/tokens');
+const { User } = require('../models');
 
 /**
  * Login with username and password
@@ -90,10 +91,27 @@ const verifyEmail = async (verifyEmailToken) => {
   }
 };
 
+/**
+ * Register a user
+ * @param {Object} userBody
+ * @returns {Promise<User>}
+ */
+const registerUser = async (userBody) => {
+  if (await User.isEmailTaken(userBody.email)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Email already taken');
+  }
+  return User.create({
+    ...userBody,
+    role: 'user',
+    isEmailVerified: false,
+  });
+};
+
 module.exports = {
   loginUserWithEmailAndPassword,
   logout,
   refreshAuth,
   resetPassword,
   verifyEmail,
+  registerUser,
 };

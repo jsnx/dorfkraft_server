@@ -2,7 +2,14 @@ const express = require('express');
 const authRoute = require('./auth.route');
 const userRoute = require('./user.route');
 const docsRoute = require('./docs.route');
+const healthRoute = require('./health.route');
 const config = require('../../config/config');
+const regionRoute = require('./region.route');
+const villageRoute = require('./village.route');
+const vehicleRoute = require('./vehicle.route');
+const driverRoute = require('./driver.route');
+const productRoute = require('./product.route');
+const tripRoute = require('./trip.route');
 
 const router = express.Router();
 
@@ -14,6 +21,34 @@ const defaultRoutes = [
   {
     path: '/users',
     route: userRoute,
+  },
+  {
+    path: '/trips',
+    route: tripRoute,
+  },
+  {
+    path: '/health',
+    route: healthRoute,
+  },
+  {
+    path: '/regions',
+    route: regionRoute,
+  },
+  {
+    path: '/villages',
+    route: villageRoute,
+  },
+  {
+    path: '/vehicles',
+    route: vehicleRoute,
+  },
+  {
+    path: '/drivers',
+    route: driverRoute,
+  },
+  {
+    path: '/products',
+    route: productRoute,
   },
 ];
 

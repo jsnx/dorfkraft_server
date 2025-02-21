@@ -13,7 +13,7 @@
   "scripts": {
     "start": "pm2 start ecosystem.config.json --no-daemon",
     "dev": "cross-env NODE_ENV=development nodemon src/index.js",
-    "test": "jest -i --colors --verbose --detectOpenHandles",
+    "test": "cross-env NODE_ENV=test jest -i --colors --verbose --detectOpenHandles --forceExit",
     "test:watch": "jest -i --watchAll",
     "coverage": "jest -i --coverage",
     "coverage:coveralls": "jest -i --coverage --coverageReporters=text-lcov | coveralls",
@@ -75,6 +75,7 @@
     "xss-clean": "^0.1.1"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.5.0",
     "coveralls": "^3.0.7",
     "eslint": "^7.0.0",
     "eslint-config-airbnb-base": "^14.0.0",
@@ -91,5 +92,18 @@
     "nodemon": "^2.0.0",
     "prettier": "^2.0.5",
     "supertest": "^6.0.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testEnvironmentOptions": {
+      "NODE_ENV": "test"
+    },
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "coveragePathIgnorePatterns": [
+      "node_modules",
+      "src/config",
+      "src/app.js",
+      "tests"
+    ]
   }
 }

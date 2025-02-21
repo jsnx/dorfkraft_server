@@ -3,11 +3,18 @@ const config = require('../../src/config/config');
 
 const setupTestDB = () => {
   beforeAll(async () => {
-    await mongoose.connect(config.mongoose.url, config.mongoose.options);
+    await mongoose.connect(config.mongoose.url, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
   });
 
   beforeEach(async () => {
-    await Promise.all(Object.values(mongoose.connection.collections).map(async (collection) => collection.deleteMany()));
+    await Promise.all(
+      Object.values(mongoose.connection.collections).map(async (collection) => {
+        await collection.deleteMany({});
+      })
+    );
   });
 
   afterAll(async () => {

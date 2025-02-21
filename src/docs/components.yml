@@ -47,6 +47,145 @@ components:
         message:
           type: string
 
+    Village:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        region:
+          type: string
+          description: Region ID
+        inhabitants:
+          type: number
+          minimum: 0
+        coordinates:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [Point]
+            coordinates:
+              type: array
+              items:
+                type: number
+              minItems: 2
+              maxItems: 2
+        isActive:
+          type: boolean
+      example:
+        id: 5ebac534954b54139806c112
+        name: Sample Village
+        region: 5ebac534954b54139806c112
+        inhabitants: 1000
+        coordinates:
+          type: Point
+          coordinates: [13.404954, 52.520008]
+        isActive: true
+
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: string
+        registrationNumber:
+          type: string
+        model:
+          type: string
+        capacity:
+          type: number
+          minimum: 0
+        status:
+          type: string
+          enum: [available, in-use, maintenance]
+        currentLocation:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [Point]
+            coordinates:
+              type: array
+              items:
+                type: number
+              minItems: 2
+              maxItems: 2
+        isActive:
+          type: boolean
+      example:
+        id: 5ebac534954b54139806c112
+        registrationNumber: ABC123
+        model: Delivery Van
+        capacity: 1000
+        status: available
+        currentLocation:
+          type: Point
+          coordinates: [13.404954, 52.520008]
+        isActive: true
+
+    Driver:
+      type: object
+      properties:
+        id:
+          type: string
+        user:
+          type: string
+          description: User ID
+        licenseNumber:
+          type: string
+        licenseExpiry:
+          type: string
+          format: date
+        assignedVehicle:
+          type: string
+          description: Vehicle ID
+        status:
+          type: string
+          enum: [available, on-duty, off-duty]
+        isActive:
+          type: boolean
+      example:
+        id: 5ebac534954b54139806c112
+        user: 5ebac534954b54139806c112
+        licenseNumber: DL123456
+        licenseExpiry: 2024-12-31
+        assignedVehicle: 5ebac534954b54139806c112
+        status: available
+        isActive: true
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        unit:
+          type: string
+        unitPrice:
+          type: number
+          minimum: 0
+        currentStock:
+          type: number
+          minimum: 0
+        vehicle:
+          type: string
+          description: Vehicle ID
+        isActive:
+          type: boolean
+      example:
+        id: 5ebac534954b54139806c112
+        name: Sample Product
+        description: A sample product description
+        unit: kg
+        unitPrice: 10.99
+        currentStock: 100
+        vehicle: 5ebac534954b54139806c112
+        isActive: true
+
   responses:
     DuplicateEmail:
       description: Email already taken
@@ -84,6 +223,15 @@ components:
           example:
             code: 404
             message: Not found
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 400
+            message: Cannot delete vehicle with active drivers
 
   securitySchemes:
     bearerAuth:
