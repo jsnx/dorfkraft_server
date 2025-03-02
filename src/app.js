@@ -6,6 +6,7 @@ const compression = require('compression');
 const cors = require('cors');
 const passport = require('passport');
 const httpStatus = require('http-status');
+const mongoose = require('mongoose');
 const config = require('./config/config');
 const morgan = require('./config/morgan');
 const { jwtStrategy } = require('./config/passport');
@@ -63,5 +64,16 @@ app.use(errorConverter);
 
 // handle error
 app.use(errorHandler);
+
+// Only connect to MongoDB if not in test environment
+// Tests will handle their own connection in setupTestDB.js
+if (config.env !== 'test') {
+  mongoose.connect(config.mongoose.url, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    useFindAndModify: false,
+    useCreateIndex: true,
+  });
+}
 
 module.exports = app;

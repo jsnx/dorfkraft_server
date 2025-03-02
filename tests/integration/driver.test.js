@@ -1,14 +1,24 @@
 const request = require('supertest');
-const faker = require('faker');
+const { faker } = require('@faker-js/faker');
 const httpStatus = require('http-status');
 const app = require('../../src/app');
 const setupTestDB = require('../utils/setupTestDB');
 const { Driver } = require('../../src/models');
 const { userOne, admin, insertUsers } = require('../fixtures/user.fixture');
 const { driverOne, insertDriver } = require('../fixtures/driver.fixture');
-const { userOneAccessToken, adminAccessToken } = require('../fixtures/token.fixture');
+const { generateTokens } = require('../fixtures/token.fixture');
 
 setupTestDB();
+
+let adminAccessToken;
+let userOneAccessToken;
+
+beforeEach(async () => {
+  await insertUsers([admin, userOne]);
+  const tokens = generateTokens();
+  adminAccessToken = tokens.adminAccessToken;
+  userOneAccessToken = tokens.userOneAccessToken;
+});
 
 describe('Driver routes', () => {
   describe('POST /v1/drivers', () => {
@@ -17,8 +27,8 @@ describe('Driver routes', () => {
     beforeEach(() => {
       newDriver = {
         user: userOne._id,
-        name: faker.name.findName(),
-        licenseNumber: faker.random.alphaNumeric(8).toUpperCase(),
+        name: faker.person.fullName(),
+        licenseNumber: faker.string.alphanumeric(8).toUpperCase(),
         licenseExpiry: new Date('2024-12-31'),
         status: 'available',
         isActive: true,
@@ -26,18 +36,11 @@ describe('Driver routes', () => {
     });
 
     test('should return 201 and successfully create driver if data is ok', async () => {
-      await insertUsers([admin, userOne]);
+      const res = await request(app).post('/v1/drivers').set('Authorization', `Bearer ${adminAccessToken}`).send(newDriver);
 
-      const res = await request(app)
-        .post('/v1/drivers')
-        .set('Authorization', `Bearer ${adminAccessToken}`)
-        .send(newDriver);
-      
       // Temporarily log the error if status is not 201
-      if (res.status !== 201) {
-        console.log('Error response:', res.body);
-      }
-      
+      // console.log('Error response:', res.body);
+
       expect(res.status).toBe(httpStatus.CREATED);
       expect(res.body).toEqual({
         id: expect.anything(),
@@ -57,8 +60,6 @@ describe('Driver routes', () => {
     });
 
     test('should return 403 error if user is not admin', async () => {
-      await insertUsers([userOne]);
-
       await request(app)
         .post('/v1/drivers')
         .set('Authorization', `Bearer ${userOneAccessToken}`)
@@ -69,7 +70,6 @@ describe('Driver routes', () => {
 
   describe('GET /v1/drivers', () => {
     test('should return 200 and apply the default query options', async () => {
-      await insertUsers([admin, userOne]);
       const driver = await insertDriver(driverOne);
 
       const res = await request(app)
@@ -106,7 +106,6 @@ describe('Driver routes', () => {
 
   describe('GET /v1/drivers/:driverId', () => {
     test('should return 200 and the driver object if data is ok', async () => {
-      await insertUsers([admin, userOne]);
       const driver = await insertDriver(driverOne);
 
       const res = await request(app)
@@ -145,11 +144,10 @@ describe('Driver routes', () => {
 
   describe('PATCH /v1/drivers/:driverId', () => {
     test('should return 200 and successfully update driver if data is ok', async () => {
-      await insertUsers([admin, userOne]);
       const driver = await insertDriver(driverOne);
-      
+
       const updateBody = {
-        licenseNumber: faker.random.alphaNumeric(8).toUpperCase(),
+        licenseNumber: faker.string.alphanumeric(8).toUpperCase(),
         status: 'on-duty',
       };
 
@@ -177,7 +175,6 @@ describe('Driver routes', () => {
     });
 
     test('should return 403 if user is not admin', async () => {
-      await insertUsers([userOne]);
       const driver = await insertDriver(driverOne);
 
       await request(app)
@@ -200,7 +197,6 @@ describe('Driver routes', () => {
 
   describe('DELETE /v1/drivers/:driverId', () => {
     test('should return 204 and soft delete the driver if data is ok', async () => {
-      await insertUsers([admin, userOne]);
       const driver = await insertDriver(driverOne);
 
       await request(app)

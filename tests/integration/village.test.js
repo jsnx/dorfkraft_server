@@ -8,11 +8,24 @@ const { userOne, admin, insertUsers } = require('../fixtures/user.fixture');
 const { villageOne, villageTwo, insertVillages, insertVillage } = require('../fixtures/village.fixture');
 const { driverOne, insertDriver } = require('../fixtures/driver.fixture');
 const { regionOne } = require('../fixtures/region.fixture');
-const { userOneAccessToken, adminAccessToken } = require('../fixtures/token.fixture');
-const { Village, Driver } = require('../../src/models');
+const { generateTokens } = require('../fixtures/token.fixture');
+const { Village, Driver, User } = require('../../src/models');
 const { villageService } = require('../../src/services');
 
 setupTestDB();
+
+let adminAccessToken;
+let userOneAccessToken;
+
+beforeEach(async () => {
+  // Clear users before each test
+  await User.deleteMany({});
+  await insertUsers([admin, userOne]);
+  // Generate fresh tokens for each test
+  const tokens = generateTokens();
+  adminAccessToken = tokens.adminAccessToken;
+  userOneAccessToken = tokens.userOneAccessToken;
+});
 
 describe('Village routes', () => {
   describe('POST /v1/villages', () => {
@@ -25,10 +38,7 @@ describe('Village routes', () => {
         inhabitants: faker.number.int({ min: 100, max: 10000 }),
         coordinates: {
           type: 'Point',
-          coordinates: [
-            parseFloat(faker.location.longitude()),
-            parseFloat(faker.location.latitude())
-          ],
+          coordinates: [parseFloat(faker.location.longitude()), parseFloat(faker.location.latitude())],
         },
         isActive: true,
       };
@@ -204,9 +214,9 @@ describe('Village routes', () => {
         .send()
         .expect(httpStatus.NO_CONTENT);
 
-      const deletedVillage = await Village.findOne({ 
+      const deletedVillage = await Village.findOne({
         _id: village._id,
-        isDeleted: true 
+        isDeleted: true,
       });
       expect(deletedVillage).toBeTruthy();
       expect(deletedVillage.isDeleted).toBe(true);
@@ -241,9 +251,9 @@ describe('Village deletion tests', () => {
   test('should soft delete village and update related drivers', async () => {
     await villageService.deleteVillage(village._id);
 
-    const deletedVillage = await Village.findOne({ 
+    const deletedVillage = await Village.findOne({
       _id: village._id,
-      isDeleted: true 
+      isDeleted: true,
     });
     expect(deletedVillage).toBeTruthy();
     expect(deletedVillage.isDeleted).toBe(true);

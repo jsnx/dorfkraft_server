@@ -67,15 +67,16 @@ const updateTripById = async (tripId, updateBody) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found');
   }
 
-  // Set actualStart when transitioning to in_progress
-  if (updateBody.status === 'in_progress' && !trip.actualStart) {
-    updateBody.actualStart = new Date().toISOString();
+  // Set actualStart when transitioning to IN_PROGRESS
+  const updateData = { ...updateBody };
+  if (updateBody.status === 'IN_PROGRESS' && !trip.actualStart) {
+    updateData.actualStart = new Date().toISOString();
   }
 
   // Use findByIdAndUpdate with runValidators and context options
   const updatedTrip = await Trip.findByIdAndUpdate(
     tripId,
-    { $set: updateBody },
+    { $set: updateData },
     {
       new: true, // Return the updated document
       runValidators: true, // Run validators only on updated paths
@@ -100,7 +101,7 @@ const updateTripDestinationStatus = async (tripId, destinationId, updateBody) =>
   }
 
   // Can't update destinations if trip is completed or cancelled
-  if (['completed', 'cancelled'].includes(trip.status)) {
+  if (['COMPLETED', 'CANCELLED'].includes(trip.status)) {
     throw new ApiError(httpStatus.BAD_REQUEST, `Cannot update destinations of ${trip.status} trip`);
   }
 
@@ -111,11 +112,12 @@ const updateTripDestinationStatus = async (tripId, destinationId, updateBody) =>
 
   // Define valid destination status transitions
   const validTransitions = {
-    pending: ['completed'],
-    completed: [],
+    PENDING: ['ARRIVED', 'COMPLETED'],
+    ARRIVED: ['COMPLETED'],
+    COMPLETED: [],
   };
 
-  if (!validTransitions[destination.status]?.includes(updateBody.status)) {
+  if (!validTransitions[destination.status] || !validTransitions[destination.status].includes(updateBody.status)) {
     throw new ApiError(
       httpStatus.BAD_REQUEST,
       `Invalid destination status transition from '${destination.status}' to '${updateBody.status}'`
@@ -124,7 +126,7 @@ const updateTripDestinationStatus = async (tripId, destinationId, updateBody) =>
 
   // Update destination status and set actualArrival if completing
   destination.status = updateBody.status;
-  if (updateBody.status === 'completed') {
+  if (updateBody.status === 'COMPLETED' || updateBody.status === 'ARRIVED') {
     destination.actualArrival = new Date();
   }
 
@@ -142,8 +144,8 @@ const deleteTripById = async (tripId) => {
   if (!trip) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found');
   }
-  if (trip.status !== 'scheduled') {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Only scheduled trips can be deleted');
+  if (trip.status !== 'PLANNED') {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Only planned trips can be deleted');
   }
   await trip.remove();
   return trip;

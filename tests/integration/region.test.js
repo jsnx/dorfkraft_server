@@ -6,11 +6,24 @@ const app = require('../../src/app');
 const setupTestDB = require('../utils/setupTestDB');
 const { userOne, admin, insertUsers } = require('../fixtures/user.fixture');
 const { regionOne, insertRegion } = require('../fixtures/region.fixture');
-const { userOneAccessToken, adminAccessToken } = require('../fixtures/token.fixture');
-const { Region } = require('../../src/models');
+const { generateTokens } = require('../fixtures/token.fixture');
+const { Region, User } = require('../../src/models');
 const { regionService } = require('../../src/services');
 
 setupTestDB();
+
+let adminAccessToken;
+let userOneAccessToken;
+
+beforeEach(async () => {
+  // Clear users before each test
+  await User.deleteMany({});
+  await insertUsers([admin, userOne]);
+  // Generate fresh tokens for each test
+  const tokens = generateTokens();
+  adminAccessToken = tokens.adminAccessToken;
+  userOneAccessToken = tokens.userOneAccessToken;
+});
 
 describe('Region routes', () => {
   describe('POST /v1/regions', () => {
@@ -27,10 +40,7 @@ describe('Region routes', () => {
         },
         coordinates: {
           type: 'Point',
-          coordinates: [
-            parseFloat(faker.location.longitude()),
-            parseFloat(faker.location.latitude())
-          ],
+          coordinates: [parseFloat(faker.location.longitude()), parseFloat(faker.location.latitude())],
         },
         radius: faker.number.int({ min: 5, max: 50 }),
         isActive: true,
@@ -38,8 +48,6 @@ describe('Region routes', () => {
     });
 
     test('should return 201 and successfully create region if data is ok', async () => {
-      await insertUsers([admin]);
-
       const res = await request(app)
         .post('/v1/regions')
         .set('Authorization', `Bearer ${adminAccessToken}`)
@@ -63,8 +71,6 @@ describe('Region routes', () => {
     });
 
     test('should return 403 error if user does not have required rights', async () => {
-      await insertUsers([userOne]);
-
       await request(app)
         .post('/v1/regions')
         .set('Authorization', `Bearer ${userOneAccessToken}`)
@@ -73,7 +79,6 @@ describe('Region routes', () => {
     });
 
     test('should return 400 error if required fields are missing', async () => {
-      await insertUsers([admin]);
       delete newRegion.name;
 
       await request(app)
@@ -86,8 +91,6 @@ describe('Region routes', () => {
 
   describe('GET /v1/regions', () => {
     test('should return 200 and apply the default query options', async () => {
-      await insertUsers([admin]);
-
       const region = await Region.create({
         name: `${faker.location.city()} Region`,
         baseAddress: {
@@ -128,7 +131,6 @@ describe('Region routes', () => {
 
   describe('DELETE /v1/regions/:regionId', () => {
     test('should return 204 and soft delete the region if data is ok', async () => {
-      await insertUsers([admin]);
       const region = await insertRegion(regionOne);
 
       await request(app)
@@ -138,9 +140,9 @@ describe('Region routes', () => {
         .expect(httpStatus.NO_CONTENT);
 
       // Change the query to find the soft deleted region
-      const deletedRegion = await Region.findOne({ 
+      const deletedRegion = await Region.findOne({
         _id: region._id,
-        isDeleted: true 
+        isDeleted: true,
       });
       expect(deletedRegion).toBeTruthy();
       expect(deletedRegion.isDeleted).toBe(true);
@@ -148,7 +150,6 @@ describe('Region routes', () => {
     });
 
     test('should return 404 if region is not found', async () => {
-      await insertUsers([admin]);
       const nonExistentId = mongoose.Types.ObjectId();
 
       await request(app)
@@ -179,7 +180,7 @@ describe('Region deletion tests', () => {
   test('should restore soft-deleted region', async () => {
     // First delete
     await regionService.deleteRegion(region._id);
-    
+
     // Then restore
     await regionService.restoreRegion(region._id);
 
@@ -191,7 +192,7 @@ describe('Region deletion tests', () => {
 
   test('should handle errors properly', async () => {
     jest.spyOn(Region.prototype, 'save').mockRejectedValueOnce(new Error('DB Error'));
-    
+
     await expect(regionService.deleteRegion(region._id)).rejects.toThrow('DB Error');
 
     const regionAfterFailedDelete = await Region.findById(region._id);

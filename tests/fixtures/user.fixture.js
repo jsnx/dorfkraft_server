@@ -1,44 +1,49 @@
 const mongoose = require('mongoose');
 const { faker } = require('@faker-js/faker');
-const { User } = require('../../src/models');
+const User = require('../../src/models/user.model');
 
 const password = 'password1';
 
-const userOne = {
-  _id: mongoose.Types.ObjectId(),
+// Generate a unique timestamp suffix for emails to avoid conflicts
+const uniqueSuffix = Date.now();
+
+const admin = {
+  _id: new mongoose.Types.ObjectId(),
   name: faker.person.fullName(),
-  email: faker.internet.email().toLowerCase(),
+  email: `admin-${uniqueSuffix}@example.com`,
+  password,
+  role: 'admin',
+  isEmailVerified: true,
+};
+
+const userOne = {
+  _id: new mongoose.Types.ObjectId(),
+  name: faker.person.fullName(),
+  email: `user1-${uniqueSuffix}@example.com`,
   password,
   role: 'user',
   isEmailVerified: false,
 };
 
 const userTwo = {
-  _id: mongoose.Types.ObjectId(),
+  _id: new mongoose.Types.ObjectId(),
   name: faker.person.fullName(),
-  email: faker.internet.email().toLowerCase(),
+  email: `user2-${uniqueSuffix}@example.com`,
   password,
   role: 'user',
   isEmailVerified: false,
 };
 
-const admin = {
-  _id: mongoose.Types.ObjectId(),
-  name: faker.person.fullName(),
-  email: faker.internet.email().toLowerCase(),
-  password,
-  role: 'admin',
-  isEmailVerified: false,
-};
-
 const insertUsers = async (users) => {
-  // Use User.create instead of insertMany to trigger the mongoose middleware
+  // Clear existing users first
+  await User.deleteMany({});
+  // Use create() for each user to ensure the pre-save hook is triggered
   await Promise.all(users.map((user) => User.create(user)));
 };
 
 module.exports = {
+  admin,
   userOne,
   userTwo,
-  admin,
   insertUsers,
 };

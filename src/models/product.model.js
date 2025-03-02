@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { toJSON, paginate } = require('./plugins');
+const { toJSON } = require('./plugins');
 
 const productSchema = mongoose.Schema(
   {
@@ -8,15 +8,32 @@ const productSchema = mongoose.Schema(
       required: true,
       trim: true,
     },
+    category: {
+      type: String,
+      enum: ['BREAD', 'ROLLS', 'PRETZEL', 'PASTRY', 'CAKE', 'SEASONAL'],
+      required: true,
+      default: 'BREAD',
+    },
     description: {
       type: String,
-      required: true,
       trim: true,
     },
     unit: {
       type: String,
+      enum: ['PIECE', 'KG', 'DOZEN'],
+      default: 'PIECE',
+    },
+    weight: {
+      type: Number,
       required: true,
-      trim: true,
+      min: 0,
+      default: 0.5,
+    },
+    volume: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0.001,
     },
     unitPrice: {
       type: Number,
@@ -27,14 +44,31 @@ const productSchema = mongoose.Schema(
       type: Number,
       required: true,
       min: 0,
+      default: 0,
     },
-    vehicle: {
-      type: mongoose.SchemaTypes.ObjectId,
-      ref: 'Vehicle',
+    shelfLife: {
+      type: Number,
+      required: true,
+      min: 1,
+      default: 3,
+    },
+    productionCost: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 1.0,
+    },
+    isSeasonalOnly: {
+      type: Boolean,
+      default: false,
     },
     isActive: {
       type: Boolean,
       default: true,
+    },
+    notes: {
+      type: String,
+      trim: true,
     },
   },
   {
@@ -42,28 +76,33 @@ const productSchema = mongoose.Schema(
   }
 );
 
-// Add plugins
-productSchema.plugin(toJSON);
-productSchema.plugin(paginate);
-
-// Override toJSON options
-productSchema.set('toJSON', {
-  transform: (doc, ret) => {
-    const transformed = {
-      id: ret._id.toString(),
-      name: ret.name,
-      description: ret.description,
-      unit: ret.unit,
-      unitPrice: ret.unitPrice,
-      currentStock: ret.currentStock,
-      isActive: ret.isActive,
-    };
-    if (ret.vehicle) {
-      transformed.vehicle = ret.vehicle;
-    }
-    return transformed;
-  },
+// Add a pre-save hook to set default values for required fields if they're not provided
+productSchema.pre('save', function (next) {
+  // This ensures the model validation passes even if the API validation doesn't include these fields
+  if (!this.category) this.category = 'BREAD';
+  if (!this.weight) this.weight = 0.5;
+  if (!this.volume) this.volume = 0.001;
+  if (!this.shelfLife) this.shelfLife = 3;
+  if (!this.productionCost) this.productionCost = 1.0;
+  next();
 });
+
+// Add indexes
+productSchema.index({ name: 1 }, { unique: true });
+productSchema.index({ category: 1 });
+productSchema.index({ isSeasonalOnly: 1 });
+
+// Add plugin that converts mongoose to json
+productSchema.plugin(toJSON);
+
+/**
+ * Check if enough stock is available
+ * @param {number} quantity - Quantity needed
+ * @returns {Promise<boolean>}
+ */
+productSchema.methods.hasEnoughStock = async function (quantity) {
+  return this.currentStock >= quantity;
+};
 
 const Product = mongoose.model('Product', productSchema);
 

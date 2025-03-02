@@ -75,11 +75,11 @@ const deleteRegion = async (regionId) => {
  * @returns {Promise<Region>}
  */
 const restoreRegion = async (regionId) => {
-  const region = await Region.findOne({ 
-    _id: regionId, 
-    isDeleted: true 
+  const region = await Region.findOne({
+    _id: regionId,
+    isDeleted: true,
   });
-  
+
   if (!region) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Region not found');
   }

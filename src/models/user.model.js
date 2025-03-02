@@ -3,6 +3,7 @@ const validator = require('validator');
 const bcrypt = require('bcryptjs');
 const { toJSON, paginate } = require('./plugins');
 const { roles } = require('../config/roles');
+const logger = require('../config/logger');
 
 const userSchema = mongoose.Schema(
   {
@@ -72,13 +73,34 @@ userSchema.statics.isEmailTaken = async function (email, excludeUserId) {
  */
 userSchema.methods.isPasswordMatch = async function (password) {
   const user = this;
-  return bcrypt.compare(password, user.password);
+  logger.debug('Comparing passwords:', {
+    inputPassword: password,
+    storedHash: user.password,
+  });
+  const isMatch = await bcrypt.compare(password, user.password);
+  logger.debug('Password match result:', isMatch);
+  return isMatch;
 };
 
 userSchema.pre('save', async function (next) {
   const user = this;
   if (user.isModified('password')) {
     user.password = await bcrypt.hash(user.password, 8);
+  }
+  next();
+});
+
+userSchema.pre('insertMany', async function (next, docs) {
+  if (Array.isArray(docs) && docs.length) {
+    const hashedPasswords = docs.map(async (doc) => {
+      if (doc.password) {
+        const docCopy = { ...doc };
+        docCopy.password = await bcrypt.hash(doc.password, 8);
+        return docCopy;
+      }
+      return doc;
+    });
+    await Promise.all(hashedPasswords);
   }
   next();
 });

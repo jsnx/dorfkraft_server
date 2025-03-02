@@ -52,7 +52,7 @@ const getTrips = {
   query: Joi.object().keys({
     vehicle: Joi.string().custom(objectId),
     driver: Joi.string().custom(objectId),
-    status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled'),
+    status: Joi.string().valid('PLANNED', 'LOADING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'),
     sortBy: Joi.string(),
     limit: Joi.number().integer(),
     page: Joi.number().integer(),
@@ -71,7 +71,7 @@ const updateTrip = {
   }),
   body: Joi.object()
     .keys({
-      status: Joi.string().valid('scheduled', 'in_progress', 'completed'),
+      status: Joi.string().valid('PLANNED', 'LOADING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'),
       notes: Joi.string().allow(''),
       actualStart: Joi.date().optional(),
       actualEnd: Joi.date().optional(),
@@ -86,7 +86,7 @@ const updateDestination = {
   }),
   body: Joi.object()
     .keys({
-      status: Joi.string().valid('pending', 'arrived', 'completed'),
+      status: Joi.string().valid('PENDING', 'ARRIVED', 'COMPLETED'),
       // ... other validation rules
     })
     .min(1),

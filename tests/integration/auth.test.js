@@ -1,9 +1,10 @@
 const request = require('supertest');
-const faker = require('faker');
+const { faker } = require('@faker-js/faker');
 const httpStatus = require('http-status');
 const httpMocks = require('node-mocks-http');
 const moment = require('moment');
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const app = require('../../src/app');
 const config = require('../../src/config/config');
 const auth = require('../../src/middlewares/auth');
@@ -14,7 +15,7 @@ const { User, Token } = require('../../src/models');
 const { roleRights } = require('../../src/config/roles');
 const { tokenTypes } = require('../../src/config/tokens');
 const { userOne, admin, insertUsers } = require('../fixtures/user.fixture');
-const { userOneAccessToken, adminAccessToken } = require('../fixtures/token.fixture');
+const { generateTokens } = require('../fixtures/token.fixture');
 
 // Mock the email service
 jest.mock('../../src/services/email.service', () => ({
@@ -27,12 +28,23 @@ jest.mock('../../src/services/email.service', () => ({
 
 setupTestDB();
 
+let adminAccessToken;
+let userOneAccessToken;
+
+beforeEach(async () => {
+  await User.deleteMany({});
+  await insertUsers([admin, userOne]);
+  const tokens = generateTokens();
+  adminAccessToken = tokens.adminAccessToken;
+  userOneAccessToken = tokens.userOneAccessToken;
+});
+
 describe('Auth routes', () => {
   describe('POST /v1/auth/register', () => {
     let newUser;
     beforeEach(() => {
       newUser = {
-        name: faker.name.findName(),
+        name: faker.person.fullName(),
         email: faker.internet.email().toLowerCase(),
         password: 'password1',
       };
@@ -117,8 +129,8 @@ describe('Auth routes', () => {
 
     test('should return 401 error if there are no users with that email', async () => {
       const loginCredentials = {
-        email: userOne.email,
-        password: userOne.password,
+        email: 'nonexistent@example.com',
+        password: 'password1',
       };
 
       const res = await request(app).post('/v1/auth/login').send(loginCredentials).expect(httpStatus.UNAUTHORIZED);
@@ -235,9 +247,13 @@ describe('Auth routes', () => {
     });
 
     test('should return 401 error if user is not found', async () => {
+      // Create a token for a user that will be deleted
       const expires = moment().add(config.jwt.refreshExpirationDays, 'days');
       const refreshToken = tokenService.generateToken(userOne._id, expires, tokenTypes.REFRESH);
       await tokenService.saveToken(refreshToken, userOne._id, expires, tokenTypes.REFRESH);
+
+      // Delete the user to simulate user not found
+      await User.deleteMany({});
 
       await request(app).post('/v1/auth/refresh-tokens').send({ refreshToken }).expect(httpStatus.UNAUTHORIZED);
     });
@@ -253,10 +269,7 @@ describe('Auth routes', () => {
       await insertUsers([userOne]);
       const sendResetPasswordEmailSpy = jest.spyOn(emailService, 'sendResetPasswordEmail');
 
-      await request(app)
-        .post('/v1/auth/forgot-password')
-        .send({ email: userOne.email })
-        .expect(httpStatus.NO_CONTENT);
+      await request(app).post('/v1/auth/forgot-password').send({ email: userOne.email }).expect(httpStatus.NO_CONTENT);
 
       expect(sendResetPasswordEmailSpy).toHaveBeenCalledWith(userOne.email, expect.any(String));
     });
@@ -268,7 +281,12 @@ describe('Auth routes', () => {
     });
 
     test('should return 404 if email does not belong to any user', async () => {
-      await request(app).post('/v1/auth/forgot-password').send({ email: userOne.email }).expect(httpStatus.NOT_FOUND);
+      await User.deleteMany({});
+
+      await request(app)
+        .post('/v1/auth/forgot-password')
+        .send({ email: 'nonexistent@example.com' })
+        .expect(httpStatus.NOT_FOUND);
     });
   });
 
@@ -329,6 +347,8 @@ describe('Auth routes', () => {
       const expires = moment().add(config.jwt.resetPasswordExpirationMinutes, 'minutes');
       const resetPasswordToken = tokenService.generateToken(userOne._id, expires, tokenTypes.RESET_PASSWORD);
       await tokenService.saveToken(resetPasswordToken, userOne._id, expires, tokenTypes.RESET_PASSWORD);
+
+      await User.deleteMany({});
 
       await request(app)
         .post('/v1/auth/reset-password')
@@ -448,8 +468,8 @@ describe('Auth routes', () => {
 
     test('should return 401 if user is not found', async () => {
       const expires = moment().add(config.jwt.verifyEmailExpirationMinutes, 'minutes');
-      const verifyEmailToken = tokenService.generateToken(userOne._id, expires);
-      await tokenService.saveToken(verifyEmailToken, userOne._id, expires, tokenTypes.VERIFY_EMAIL);
+      const verifyEmailToken = tokenService.generateToken(userOne._id, expires, tokenTypes.VERIFY_EMAIL);
+      await User.deleteMany({});
 
       await request(app)
         .post('/v1/auth/verify-email')
@@ -544,8 +564,16 @@ describe('Auth middleware', () => {
   });
 
   test('should call next with unauthorized error if user is not found', async () => {
-    const req = httpMocks.createRequest({ headers: { Authorization: `Bearer ${userOneAccessToken}` } });
+    // Create a token for a user that doesn't exist
+    const nonExistentUserId = new mongoose.Types.ObjectId();
+    const expires = moment().add(config.jwt.accessExpirationMinutes, 'minutes');
+    const accessToken = tokenService.generateToken(nonExistentUserId, expires, tokenTypes.ACCESS);
+
+    const req = httpMocks.createRequest({ headers: { Authorization: `Bearer ${accessToken}` } });
     const next = jest.fn();
+
+    // Make sure no users exist in the database
+    await User.deleteMany({});
 
     await auth()(req, httpMocks.createResponse(), next);
 

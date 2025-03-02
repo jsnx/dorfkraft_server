@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const { toJSON, paginate } = require('./plugins');
-const softDeletePlugin = require('../plugins/softDelete.plugin');
+const softDelete = require('../plugins/softDelete.plugin');
 
 const vehicleSchema = mongoose.Schema(
   {
@@ -16,14 +16,21 @@ const vehicleSchema = mongoose.Schema(
       trim: true,
     },
     capacity: {
-      type: Number,
-      required: true,
-      min: 0,
+      weight: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+      volume: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
     },
     status: {
       type: String,
-      enum: ['available', 'in-use', 'maintenance'],
-      default: 'available',
+      enum: ['AVAILABLE', 'IN_USE', 'MAINTENANCE', 'OUT_OF_SERVICE'],
+      default: 'AVAILABLE',
     },
     currentLocation: {
       type: {
@@ -36,9 +43,28 @@ const vehicleSchema = mongoose.Schema(
         required: true,
       },
     },
+    maintenanceSchedule: {
+      lastService: {
+        type: Date,
+        required: true,
+      },
+      nextService: {
+        type: Date,
+        required: true,
+      },
+      serviceIntervalKm: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+    },
     isActive: {
       type: Boolean,
       default: true,
+    },
+    notes: {
+      type: String,
+      trim: true,
     },
   },
   {
@@ -49,10 +75,12 @@ const vehicleSchema = mongoose.Schema(
 // Add plugins
 vehicleSchema.plugin(toJSON);
 vehicleSchema.plugin(paginate);
-vehicleSchema.plugin(softDeletePlugin);
+vehicleSchema.plugin(softDelete);
 
-// Create geospatial index for currentLocation
-vehicleSchema.index({ currentLocation: '2dsphere' });
+// Add indexes
+vehicleSchema.index({ registrationNumber: 1 });
+vehicleSchema.index({ status: 1 });
+vehicleSchema.index({ 'currentLocation.coordinates': '2dsphere' });
 
 const Vehicle = mongoose.model('Vehicle', vehicleSchema);
 

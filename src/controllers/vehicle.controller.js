@@ -30,7 +30,7 @@ const updateVehicle = catchAsync(async (req, res) => {
 });
 
 const deleteVehicle = catchAsync(async (req, res) => {
-  await vehicleService.deleteVehicle(req.params.vehicleId);
+  await vehicleService.deleteVehicleById(req.params.vehicleId);
   res.status(httpStatus.NO_CONTENT).send();
 });
 

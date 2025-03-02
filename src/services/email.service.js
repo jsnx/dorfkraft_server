@@ -24,12 +24,12 @@ if (process.env.NODE_ENV !== 'test') {
  * @returns {Promise}
  */
 const sendEmail = async (to, subject, text, html) => {
-  const msg = { 
-    from: config.email.from, 
-    to, 
-    subject, 
+  const msg = {
+    from: config.email.from,
+    to,
+    subject,
     text,
-    html: html || text // Fallback to text if HTML is not provided
+    html: html || text, // Fallback to text if HTML is not provided
   };
   await transport.sendMail(msg);
 };
@@ -67,9 +67,9 @@ If you did not create an account, then ignore this email.`;
 };
 
 const sendWelcomeEmail = async (to, name) => {
-  const subject = 'Willkommen bei DorfKraft!'
+  const subject = 'Willkommen bei DorfKraft!';
   const text = `Hallo ${name},\n\nWillkommen bei DorfKraft! Wir freuen uns, Sie an Bord zu haben.\n\nMit DorfKraft können Sie:\n- Ihre Routen effizient planen\n- Den Überblick über Ihre Fahrzeugflotte behalten\n- Verkäufe und Inventar verwalten\n- und vieles mehr!\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.\n\nBeste Grüße\nIhr DorfKraft Team`;
-  
+
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">

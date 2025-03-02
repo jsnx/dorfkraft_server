@@ -11,4 +11,4 @@ jest.mock('nodemailer', () => ({
     sendMail: jest.fn().mockResolvedValue(true),
     verify: jest.fn().mockResolvedValue(true),
   })),
-})); 
+}));

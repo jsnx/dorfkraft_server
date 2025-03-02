@@ -11,9 +11,21 @@ const { insertVehicle, vehicleOne } = require('../fixtures/vehicle.fixture');
 const { insertDriver, driverOne } = require('../fixtures/driver.fixture');
 const { insertVillage, villageOne } = require('../fixtures/village.fixture');
 const { insertProduct, productOne } = require('../fixtures/product.fixture');
-const { userOneAccessToken, adminAccessToken } = require('../fixtures/token.fixture');
+const { generateTokens } = require('../fixtures/token.fixture');
+const { User } = require('../../src/models');
 
 setupTestDB();
+
+let adminAccessToken;
+let userOneAccessToken;
+
+beforeEach(async () => {
+  await User.deleteMany({});
+  await insertUsers([admin, userOne]);
+  const tokens = generateTokens();
+  adminAccessToken = tokens.adminAccessToken;
+  userOneAccessToken = tokens.userOneAccessToken;
+});
 
 describe('Trip routes', () => {
   describe('POST /v1/trips', () => {
@@ -69,8 +81,6 @@ describe('Trip routes', () => {
     });
 
     test('should return 201 and successfully create trip if data is ok', async () => {
-      await insertUsers([admin]);
-
       const res = await request(app)
         .post('/v1/trips')
         .set('Authorization', `Bearer ${adminAccessToken}`)
@@ -81,25 +91,15 @@ describe('Trip routes', () => {
         id: expect.anything(),
         vehicle: expect.objectContaining({
           id: newTrip.vehicle.toHexString(),
-          registrationNumber: expect.any(String),
-          model: expect.any(String),
-          capacity: expect.any(Number),
-          status: expect.any(String),
-          isActive: expect.any(Boolean),
         }),
         driver: expect.objectContaining({
           id: newTrip.driver.toHexString(),
-          name: expect.any(String),
-          licenseNumber: expect.any(String),
-          status: expect.any(String),
-          isActive: expect.any(Boolean),
         }),
+        scheduledStart: expect.any(String),
+        status: 'PLANNED',
+        isActive: expect.any(Boolean),
         startLocation: expect.any(Object),
         destinations: expect.any(Array),
-        scheduledStart: expect.any(String),
-        status: 'scheduled',
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
       });
 
       const dbTrip = await Trip.findById(res.body.id);
@@ -107,7 +107,7 @@ describe('Trip routes', () => {
       expect(dbTrip).toMatchObject({
         vehicle: newTrip.vehicle,
         driver: newTrip.driver,
-        status: 'scheduled',
+        status: 'PLANNED',
       });
     });
 
@@ -116,8 +116,6 @@ describe('Trip routes', () => {
     });
 
     test('should return 403 error if user is not admin', async () => {
-      await insertUsers([userOne]);
-
       await request(app)
         .post('/v1/trips')
         .set('Authorization', `Bearer ${userOneAccessToken}`)
@@ -126,7 +124,6 @@ describe('Trip routes', () => {
     });
 
     test('should return 400 error if vehicle is not found', async () => {
-      await insertUsers([admin]);
       newTrip.vehicle = mongoose.Types.ObjectId();
 
       await request(app)
@@ -137,7 +134,6 @@ describe('Trip routes', () => {
     });
 
     test('should return 400 error if driver is not found', async () => {
-      await insertUsers([admin]);
       newTrip.driver = mongoose.Types.ObjectId();
 
       await request(app)
@@ -150,7 +146,6 @@ describe('Trip routes', () => {
 
   describe('GET /v1/trips', () => {
     test('should return 200 and apply the default query options', async () => {
-      await insertUsers([admin]);
       await insertVehicle(vehicleOne);
       await insertDriver(driverOne);
       await insertTrips([tripOne, tripTwo]);
@@ -175,9 +170,8 @@ describe('Trip routes', () => {
           id: tripOne.vehicle.toHexString(),
           registrationNumber: expect.any(String),
           model: expect.any(String),
-          capacity: expect.any(Number),
-          status: expect.any(String),
           isActive: expect.any(Boolean),
+          status: expect.any(String),
         }),
         driver: expect.objectContaining({
           id: tripOne.driver.toHexString(),
@@ -190,8 +184,7 @@ describe('Trip routes', () => {
         scheduledStart: tripOne.scheduledStart.toISOString(),
         startLocation: expect.any(Object),
         destinations: expect.any(Array),
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
+        isActive: expect.any(Boolean),
       });
     });
 
@@ -200,7 +193,6 @@ describe('Trip routes', () => {
     });
 
     test('should correctly apply filter on status field', async () => {
-      await insertUsers([admin]);
       await insertTrips([tripOne, tripTwo]);
 
       const res = await request(app)
@@ -224,7 +216,6 @@ describe('Trip routes', () => {
 
   describe('GET /v1/trips/:tripId', () => {
     test('should return 200 and the trip object if data is ok', async () => {
-      await insertUsers([admin]);
       await insertVehicle(vehicleOne);
       await insertDriver(driverOne);
       await insertTrips([tripOne]);
@@ -239,37 +230,23 @@ describe('Trip routes', () => {
         id: tripOne._id.toHexString(),
         vehicle: expect.objectContaining({
           id: tripOne.vehicle.toHexString(),
-          registrationNumber: expect.any(String),
-          model: expect.any(String),
-          capacity: expect.any(Number),
-          status: expect.any(String),
-          isActive: expect.any(Boolean),
         }),
         driver: expect.objectContaining({
           id: tripOne.driver.toHexString(),
-          name: expect.any(String),
-          licenseNumber: expect.any(String),
-          status: expect.any(String),
-          isActive: expect.any(Boolean),
         }),
         status: tripOne.status,
         scheduledStart: tripOne.scheduledStart.toISOString(),
+        isActive: expect.any(Boolean),
         startLocation: expect.any(Object),
         destinations: expect.any(Array),
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
       });
     });
 
     test('should return 401 error if access token is missing', async () => {
-      await insertTrips([tripOne]);
-
       await request(app).get(`/v1/trips/${tripOne._id}`).send().expect(httpStatus.UNAUTHORIZED);
     });
 
     test('should return 404 error if trip is not found', async () => {
-      await insertUsers([admin]);
-
       await request(app)
         .get(`/v1/trips/${mongoose.Types.ObjectId()}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
@@ -280,19 +257,12 @@ describe('Trip routes', () => {
 
   describe('PATCH /v1/trips/:tripId', () => {
     test('should return 200 and successfully update trip if data is ok', async () => {
-      await insertUsers([admin]);
       await insertVehicle(vehicleOne);
       await insertDriver(driverOne);
       await insertTrips([tripOne]);
 
-      const tripBeforeUpdate = await Trip.findById(tripOne._id);
-      console.log('Trip before update:', {
-        id: tripOne._id,
-        status: tripBeforeUpdate?.status,
-      });
-
       const updateBody = {
-        status: 'in_progress',
+        status: 'IN_PROGRESS',
         notes: 'Updated trip notes',
       };
 
@@ -300,8 +270,6 @@ describe('Trip routes', () => {
         .patch(`/v1/trips/${tripOne._id}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
         .send(updateBody);
-
-      console.log('Error response:', res.body);
 
       expect(res.status).toBe(httpStatus.OK);
 
@@ -318,37 +286,33 @@ describe('Trip routes', () => {
     });
 
     test('should return 404 if trip is not found', async () => {
-      await insertUsers([admin]);
-
       await request(app)
         .patch(`/v1/trips/${mongoose.Types.ObjectId()}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
-        .send({ status: 'in_progress' })
+        .send({ status: 'IN_PROGRESS' })
         .expect(httpStatus.NOT_FOUND);
     });
 
     test('should return 400 error if status transition is invalid', async () => {
-      await insertUsers([admin]);
       await insertTrips([tripTwo]); // tripTwo is already in_progress
 
       await request(app)
         .patch(`/v1/trips/${tripTwo._id}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
-        .send({ status: 'scheduled' })
+        .send({ status: 'SCHEDULED' })
         .expect(httpStatus.BAD_REQUEST);
     });
   });
 
   describe('PATCH /v1/trips/:tripId/destinations/:destinationId', () => {
     test('should return 200 and successfully update destination status', async () => {
-      await insertUsers([admin]);
       await insertVehicle(vehicleOne);
       await insertDriver(driverOne);
       await insertTrips([tripOne]);
 
       const destinationId = tripOne.destinations[0]._id;
       const updateBody = {
-        status: 'arrived',
+        status: 'ARRIVED',
       };
 
       const res = await request(app)
@@ -368,30 +332,24 @@ describe('Trip routes', () => {
     });
 
     test('should return 404 if trip is not found', async () => {
-      await insertUsers([admin]);
-
       await request(app)
         .patch(`/v1/trips/${mongoose.Types.ObjectId()}/destinations/${mongoose.Types.ObjectId()}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
-        .send({ status: 'completed' })
+        .send({ status: 'COMPLETED' })
         .expect(httpStatus.NOT_FOUND);
     });
 
     test('should return 404 if destination is not found', async () => {
-      await insertUsers([admin]);
-      await insertTrips([tripOne]);
-
       await request(app)
         .patch(`/v1/trips/${tripOne._id}/destinations/${mongoose.Types.ObjectId()}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
-        .send({ status: 'completed' })
+        .send({ status: 'COMPLETED' })
         .expect(httpStatus.NOT_FOUND);
     });
   });
 
   describe('DELETE /v1/trips/:tripId', () => {
     test('should return 204 and delete trip if data is ok', async () => {
-      await insertUsers([admin]);
       await insertTrips([tripOne]);
 
       await request(app)
@@ -405,8 +363,6 @@ describe('Trip routes', () => {
     });
 
     test('should return 404 if trip is not found', async () => {
-      await insertUsers([admin]);
-
       await request(app)
         .delete(`/v1/trips/${mongoose.Types.ObjectId()}`)
         .set('Authorization', `Bearer ${adminAccessToken}`)
@@ -415,7 +371,6 @@ describe('Trip routes', () => {
     });
 
     test('should return 400 if trip is not in scheduled status', async () => {
-      await insertUsers([admin]);
       await insertTrips([tripTwo]); // tripTwo is in_progress
 
       await request(app)

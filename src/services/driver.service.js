@@ -1,6 +1,5 @@
 const httpStatus = require('http-status');
-const mongoose = require('mongoose');
-const { Driver, Vehicle } = require('../models');
+const { Driver } = require('../models');
 const ApiError = require('../utils/ApiError');
 
 /**

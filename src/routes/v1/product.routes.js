@@ -21,4 +21,4 @@ router
   .route('/:productId/restore')
   .post(auth('manageProducts'), validate(productValidation.restoreProduct), productController.restoreProduct);
 
-module.exports = router; 
+module.exports = router;

@@ -47,12 +47,15 @@ const updateDestination = catchAsync(async (req, res) => {
   }
 
   const validDestinationTransitions = {
-    pending: ['arrived'],
-    arrived: ['completed'],
-    completed: [],
+    PENDING: ['ARRIVED'],
+    ARRIVED: ['COMPLETED'],
+    COMPLETED: [],
   };
 
-  if (!validDestinationTransitions[destination.status] || !validDestinationTransitions[destination.status].includes(req.body.status)) {
+  if (
+    !validDestinationTransitions[destination.status] ||
+    !validDestinationTransitions[destination.status].includes(req.body.status)
+  ) {
     throw new ApiError(
       httpStatus.BAD_REQUEST,
       `Invalid destination status transition from ${destination.status} to ${req.body.status}`
@@ -60,7 +63,7 @@ const updateDestination = catchAsync(async (req, res) => {
   }
 
   // Set actualArrival when arriving at destination
-  if (req.body.status === 'arrived' && !destination.actualArrival) {
+  if (req.body.status === 'ARRIVED' && !destination.actualArrival) {
     destination.actualArrival = new Date();
   }
 

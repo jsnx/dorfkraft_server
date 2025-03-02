@@ -13,8 +13,10 @@
   "scripts": {
     "start": "pm2 start ecosystem.config.json --no-daemon",
     "dev": "cross-env NODE_ENV=development nodemon src/index.js",
-    "test": "cross-env NODE_ENV=test jest -i --colors --verbose --detectOpenHandles --forceExit",
-    "test:watch": "jest -i --watchAll",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "start:testdata": "cross-env SEED_TESTDATA=true pm2 start ecosystem.config.json --no-daemon",
+    "dev:testdata": "cross-env SEED_TESTDATA=true NODE_ENV=development nodemon src/index.js",
     "coverage": "jest -i --coverage",
     "coverage:coveralls": "jest -i --coverage --coverageReporters=text-lcov | coveralls",
     "lint": "eslint .",
@@ -98,12 +100,18 @@
     "testEnvironmentOptions": {
       "NODE_ENV": "test"
     },
-    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js", "<rootDir>/tests/utils/setupTestDB.js"],
     "coveragePathIgnorePatterns": [
       "node_modules",
       "src/config",
       "src/app.js",
       "tests"
+    ],
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "testPathIgnorePatterns": [
+      "src/seeders/__tests__/"
     ]
   }
 }

@@ -11,19 +11,16 @@ const validateStatusTransition = catchAsync(async (req, res, next) => {
     }
 
     const validTransitions = {
-      scheduled: ['in_progress'],
-      in_progress: ['completed'],
-      completed: [],
+      PLANNED: ['IN_PROGRESS'],
+      IN_PROGRESS: ['COMPLETED'],
+      COMPLETED: [],
     };
 
     if (!validTransitions[trip.status] || !validTransitions[trip.status].includes(req.body.status)) {
-      throw new ApiError(
-        httpStatus.BAD_REQUEST,
-        `Invalid status transition from ${trip.status} to ${req.body.status}`
-      );
+      throw new ApiError(httpStatus.BAD_REQUEST, `Invalid status transition from ${trip.status} to ${req.body.status}`);
     }
 
-    if (req.body.status === 'in_progress') {
+    if (req.body.status === 'IN_PROGRESS') {
       req.body.actualStart = new Date().toISOString();
     }
   }
@@ -32,4 +29,4 @@ const validateStatusTransition = catchAsync(async (req, res, next) => {
 
 module.exports = {
   validateStatusTransition,
-}; 
+};

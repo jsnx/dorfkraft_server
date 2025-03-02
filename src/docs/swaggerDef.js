@@ -1123,9 +1123,25 @@ const swaggerDef = {
             name: 'status',
             schema: {
               type: 'string',
-              enum: ['scheduled', 'in_progress', 'completed', 'cancelled'],
+              enum: ['PLANNED', 'LOADING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
             },
             description: 'Trip status',
+          },
+          {
+            in: 'query',
+            name: 'vehicle',
+            schema: {
+              type: 'string',
+            },
+            description: 'Vehicle ID',
+          },
+          {
+            in: 'query',
+            name: 'driver',
+            schema: {
+              type: 'string',
+            },
+            description: 'Driver ID',
           },
           {
             in: 'query',
@@ -1263,10 +1279,18 @@ const swaggerDef = {
                 properties: {
                   status: {
                     type: 'string',
-                    enum: ['in_progress', 'completed', 'cancelled'],
+                    enum: ['PLANNED', 'LOADING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
                   },
                   notes: {
                     type: 'string',
+                  },
+                  actualStart: {
+                    type: 'string',
+                    format: 'date-time',
+                  },
+                  actualEnd: {
+                    type: 'string',
+                    format: 'date-time',
                   },
                 },
                 minProperties: 1,
@@ -1367,7 +1391,7 @@ const swaggerDef = {
                 properties: {
                   status: {
                     type: 'string',
-                    enum: ['pending', 'completed'],
+                    enum: ['PENDING', 'ARRIVED', 'COMPLETED'],
                   },
                 },
               },
@@ -1444,7 +1468,7 @@ const swaggerDef = {
               },
               status: {
                 type: 'string',
-                enum: ['scheduled', 'in_progress', 'completed', 'cancelled'],
+                enum: ['PLANNED', 'LOADING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
               },
               actualStart: {
                 type: 'string',
@@ -1549,8 +1573,8 @@ const swaggerDef = {
           },
           status: {
             type: 'string',
-            enum: ['pending', 'completed'],
-            default: 'pending',
+            enum: ['PENDING', 'ARRIVED', 'COMPLETED'],
+            default: 'PENDING',
           },
         },
       },

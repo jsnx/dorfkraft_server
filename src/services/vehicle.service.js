@@ -52,7 +52,7 @@ const updateVehicleById = async (vehicleId, updateBody) => {
  * @param {ObjectId} vehicleId
  * @returns {Promise<Vehicle>}
  */
-const deleteVehicle = async (vehicleId) => {
+const deleteVehicleById = async (vehicleId) => {
   const vehicle = await Vehicle.findById(vehicleId);
   if (!vehicle) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Vehicle not found');
@@ -92,6 +92,6 @@ module.exports = {
   queryVehicles,
   getVehicleById,
   updateVehicleById,
-  deleteVehicle,
+  deleteVehicleById,
   restoreVehicle,
 };
